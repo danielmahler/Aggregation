@@ -2,50 +2,71 @@
 *** INTRODUCTION ***
 ********************
 // This .do-file contains the main analysis of the paper 
-
 // Set working directory
 cd "C:\Users\WB514665\OneDrive - WBG\DECDG\Aggregation"
 use "Data/WDIfinal.dta",clear
 
+************************************
+*** PREPARE DATA FOR SIMULATIONS ***
+************************************
+// Decide how many simulations to run
 global simulations = 100
-// Merge in vector with information on country's level of missingness
-merge m:1 countrycode using "Data/WDImissing.dta", keepusing(nonmissing) nogen
-
-
-rename value value_raw
-gen value_std = .
-
 // Create standardized versions of values
+rename value       value_raw
+gen    value_std = .
 levelsof indicatorcode
 foreach ind in `r(levels)' {
 qui sum value_raw [aw=pop]                            if indicatorcode=="`ind'"
 qui replace value_std = (value_raw-`r(mean)')/`r(sd)' if indicatorcode=="`ind'"
 }
 
+*****************************************************************
+*** FIND VALUES FOR TABLE SHOWING MEANINGNESS OF SD FROM MEAN ***
+*****************************************************************
+preserve
+// Calculate mean values
+bysort indicatorcode: egen mean_raw = wtmean(value_raw), weight(pop)
+drop country* pop 
+// Keep if rows about 1 std from mean
+replace value_std = abs(value_std)
+keep if inrange(value_std,0.98,1.02)
+// Calculate difference from mean
+gen dif = abs(value_raw-mean_raw)
+drop value_raw
+// Only keep clostest to 1 standard deviation per indicator code
+// Calculate difference from 1 SD
+gen dif1sd = abs(value_std-1)
+bysort indicatorcode: egen mindif = min(dif1sd)
+bysort indicatorname: keep if dif1sd == mindif
+drop dif1sd mindif value_std
+duplicates drop
+// Manually chosing some intuitive options
+sort indicatorcode
+format mean_raw dif %4.2f
+*browse
+restore
+
+****************************************************************
+*** CALCULATE MEAN VALUES WHEN RANDOMLY DROPPING INFORMATION ***
+****************************************************************
+// Expand by number of simulations (such that rows can be drop differentially for each simulation)
 expand $simulations
 bysort indicatorcode countrycode: gen rep = _n
-
-// Means with identical draw probability for all countries
+// Using 100 simulations (for each expansion of the data), where 1%-99% of the data are being kept. 
+// Takes several 10 minutes to run on my computer
 forvalues i=1/100 {
+// Randmoly remove `i'% of the data
 gen pop_i`i' = pop if runiform()<`i'/100
+// Calculate the mean with remaining data
 bysort indicatorcode rep: egen mean_raw_i`i' = wtmean(value_raw), weight(pop_i`i')
 bysort indicatorcode rep: egen mean_std_i`i' = wtmean(value_std), weight(pop_i`i')
+// Calculate the population coverage
 bysort indicatorcode rep: egen sumpop_i`i' = sum(pop_i`i')
 }
 
-// Means with emprical draw probability 
-forvalues i=1/100 {
-if `i'<=50 {
-gen pop_e`i' = pop if runiform()<nonmissing/50*`i'
-}
-if `i'>50 {
-gen pop_e`i' = pop if runiform()<1-2*(1-nonmissing)+(1-nonmissing)/50*`i'
-}
-bysort indicatorcode rep: egen mean_raw_e`i' = wtmean(value_raw), weight(pop_e`i')
-bysort indicatorcode rep: egen mean_std_e`i' = wtmean(value_std), weight(pop_e`i')
-bysort indicatorcode rep: egen sumpop_e`i' = sum(pop_e`i')
-}
-
+**********************************************
+*** COLLAPSE TO INDICATOR-REPITITION LEVEL ***
+**********************************************
 keep mean* sumpop* rep indicator*
 duplicates drop
 reshape long mean_raw mean_std sumpop, i(rep indicator*) j(type) string
