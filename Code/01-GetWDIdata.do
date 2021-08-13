@@ -33,7 +33,7 @@ drop if inlist(countrycode,"AFE","AFW")
 // There should now be 217 different economies left
 distinct countrycode
 // Dropping some irrelevant variables
-drop region* admin* income* lending*
+drop region admin* incomelevel lending*
 // Drop everything before 2000 - we will only use data from 2000 onwards
 drop yr1960-yr1999
 // Dropping duplicates (indicators in more than one topic)
