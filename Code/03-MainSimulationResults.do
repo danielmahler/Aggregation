@@ -98,7 +98,7 @@ bysort indicatorcode (sharepop): gen dev_imp = abs(mean_imp-mean_imp[_N])
 duplicates drop
 
 format dev*  %2.1f
-format sharepop %2.1f
+format sharepop %3.2f
 drop mean*
 save "Data/Simulation_main.dta", replace
 
@@ -106,31 +106,31 @@ save "Data/Simulation_main.dta", replace
 *** COLLAPSE TO SUBGROUP-INDICATOR-REPITITION LEVEL ***
 *******************************************************
 foreach subgroup in inc reg {
-use "Data/Simulation_main_raw.dta", clear
+use "Data/Simulation_reg.dta", clear
 keep *`subgroup'* rep ind*
 duplicates drop
 reshape long mean_std_`subgroup'_ sumpop_`subgroup'_, i(rep `subgroup' indicator*) j(type) string
 drop type rep
 format sumpop %10.0f
 bysort indicatorcode `subgroup': egen totalpop = max(sumpop)
-gen sharepop = sumpop/totalpop*100
+gen sharepop = sumpop/totalpop
 drop totalpop sumpop
 sort `subgroup' sharepop
 drop if sharepop==0 
 sort indicatorcode `subgroup' sharepop
 bysort indicatorcode `subgroup' (sharepop): gen dev_std = abs(mean_std-mean_std[_N])
 format dev*  %2.1f
-format sharepop %2.1f
+format sharepop %3.2f
 drop mean*
 rename `subgroup' subgroup
 // Create ventiles of shares missing
-gen sharemissing = round(100-sharepop,5)
+gen sharemissing = round(1-sharepop,0.05)
 drop sharepop indicator*
 // Calculate means and confidence interval by ventiles
 bysort sharemissing subgroup: egen mean_all_std = mean(dev_std)
 drop dev
 duplicates drop
-drop if sharemissing>95 // This final group is an unrealistic scenario and make the plot quite ugly
+drop if sharemissing>0.95 // This final group is an unrealistic scenario and make the plot quite ugly
 drop if subgroup=="North America"
 save "Data/Simulation_`subgroup'.dta", replace
 }
@@ -142,7 +142,7 @@ save "Data/Simulation_`subgroup'.dta", replace
 use "Data/Simulation_main.dta", clear
 
 // Create ventiles of shares missing
-gen sharemissing = round(100-sharepop,5)
+gen sharemissing = round(1-sharepop,0.05)
 
 // Calculate means and confidence interval by ventiles
 foreach dist in raw std imp {
@@ -155,19 +155,19 @@ bysort sharemissing indicatorcode: egen ub_ind_`dist'   = pctile(dev_`dist'), p(
 }
 drop dev* sharepop
 duplicates drop
-drop if sharemissing>95 // This final group is an unrealistic scenario and make the plot quite ugly
+drop if sharemissing>0.95 // This final group is an unrealistic scenario and make the plot quite ugly
 
 *********************
 *** SAMPLE CHARTS ***
 *********************
 twoway scatter mean_ind_raw sharemissing if indicatorcode=="NY.GDP.PCAP.KD.ZG", color(gs4) || ///
-rarea lb_ind_raw ub_ind_raw sharemissing if indicatorcode=="NY.GDP.PCAP.KD.ZG", color(dkorange%50) lcolor(dkorange%0) graphregion(color(white)) xsize(10) ysize(10) xtitle("Share of global population without data (%)") ///
+rarea lb_ind_raw ub_ind_raw sharemissing if indicatorcode=="NY.GDP.PCAP.KD.ZG", color(dkorange%50) lcolor(dkorange%0) graphregion(color(white)) xsize(10) ysize(10) xtitle("Share of global population without data") ///
 ytitle("Error (pct. points)") ylab(,angle(horizontal)) plotregion(margin(0 0 0 0)) /// 
 legend(order(1 "Point estimate" 2 "Confidence interval") region(lcolor(white)))
 graph export "Figures/GDPraw.png", as(png) width(2000) replace
 
 twoway scatter mean_ind_std sharemissing if indicatorcode=="NY.GDP.PCAP.KD.ZG", color(gs4) || ///
-rarea lb_ind_std ub_ind_std sharemissing if indicatorcode=="NY.GDP.PCAP.KD.ZG", color(dkorange%50) lcolor(dkorange%0) graphregion(color(white)) xsize(10) ysize(10) xtitle("Share of global population without data (%)") ///
+rarea lb_ind_std ub_ind_std sharemissing if indicatorcode=="NY.GDP.PCAP.KD.ZG", color(dkorange%50) lcolor(dkorange%0) graphregion(color(white)) xsize(10) ysize(10) xtitle("Share of global population without data") ///
 ytitle("Error (standard deviations)") ylab(,angle(horizontal)) plotregion(margin(0 0 0 0)) /// 
 legend(order(1 "Point estimate" 2 "Confidence interval") region(lcolor(white)))
 graph export "Figures/GDPstd.png", as(png) width(2000) replace
@@ -179,7 +179,7 @@ drop *ind* *raw
 duplicates drop
 
 twoway scatter mean_all_std sharemissing, color(gs4) || ///
-rarea lb_all_std ub_all_std sharemissing, color(dkorange%50) lcolor(dkorange%0) graphregion(color(white)) xsize(10) ysize(10) xtitle("Share of global population without data (%)") ///
+rarea lb_all_std ub_all_std sharemissing, color(dkorange%50) lcolor(dkorange%0) graphregion(color(white)) xsize(10) ysize(10) xtitle("Share of global population without data") ///
 ytitle("Error (standard deviations)") ylab(,angle(horizontal)) plotregion(margin(0 0 0 0)) /// 
 legend(order(1 "Point estimate" 2 "Confidence interval") region(lcolor(white)))
 graph export "Figures/Allrandom.png", as(png) width(2000) replace
@@ -193,8 +193,8 @@ replace ub_all_std = 1 if ub_all_std>1
 twoway scatter mean_all_std sharemissing, color(gs4) || ///
        rarea lb_all_std ub_all_std sharemissing, color(dkorange%50) lcolor(dkorange%0) || ///
        line pred sharemissing , lwidth(thick) color(dkorange) ///
-	   graphregion(color(white)) xsize(10) ysize(10) xtitle("Share of global population without data (%)", size(medlarge)) ///
-ytitle("Error (standard deviations from mean)", size(medlarge)) ylab(0(0.25)1,angle(horizontal) labsize(medlarge)) plotregion(margin(0 0 0 0)) xlab(0(25)100,labsize(medlarge)) /// 
+	   graphregion(color(white)) xsize(10) ysize(10) xtitle("Share of global population without data", size(medlarge)) ///
+ytitle("Error (standard deviations from mean)", size(medlarge)) ylab(0(0.25)1,angle(horizontal) labsize(medlarge)) plotregion(margin(0 0 0 0)) xlab(0(0.25)1,labsize(medlarge)) /// 
 legend(order(1 "Point estimate" 2 "Confidence interval" 3 "Fitted line") size(medlarge) rows(1) span symxsize(*0.25) region(lcolor(white))) graphregion(margin(0 3 0 2))
 graph export "Figures/Allempirical_fitted.png", as(png) width(2000) replace
 
@@ -205,7 +205,7 @@ save "Data/Simulation_global.dta", replace
 ******************************
 *** REGION/INCGROUP CHARTS ***
 ******************************
-use "Data/Simulation_global.dta", clear
+use "Data/Simulation_global.dta", clearO
 append using "Data/Simulation_reg"
 append using "Data/Simulation_inc"
 
@@ -229,7 +229,7 @@ twoway line mean_all_std sharemissing if subgroup=="High income", lcolor(gs4) ||
 	   line mean_all_std sharemissing if subgroup=="South Asia", lcolor(gs4) ||  ///
 	   line mean_all_std sharemissing if subgroup=="Sub-Saharan Africa", lcolor(gs4) || ///
 	   lfit mean_all_std sharemissing if subgroup=="Global", lwidth(thick) lcolor(dkorange) ///
-	   graphregion(color(white)) xsize(10) ysize(10) xtitle("Share of group without data (%)", size(medlarge)) ///
-ytitle("Error (standard deviations from mean)", size(medlarge)) ylab(0(0.25)1,angle(horizontal) labsize(medlarge)) plotregion(margin(0 0 0 0)) xlab(0(25)100,labsize(medlarge)) /// 
+	   graphregion(color(white)) xsize(10) ysize(10) xtitle("Share of group without data", size(medlarge)) ///
+ytitle("Error (standard deviations from mean)", size(medlarge)) ylab(0(0.25)1,angle(horizontal) labsize(medlarge)) plotregion(margin(0 0 0 0)) xlab(0(0.25)1,labsize(medlarge)) /// 
 legend(order(11 "Global" 2 "Income groups and regions") size(medlarge) rows(1) span symxsize(*0.25) region(lcolor(white))) graphregion(margin(0 3 0 2))
 graph export "Figures/Allempirical_increg.png", as(png) width(2000) replace

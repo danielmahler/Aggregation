@@ -86,7 +86,7 @@ gen pred_`var' = sharemissing*beta[1,1]
 twoway line mean_all_emp sharemissing, color(black) lwidth(thick) || ///
 	   line mean_all_imp sharemissing, color(gs8) lwidth(thick) || ///
 	   lfit pred_mean_all_std sharemissing, lwidth(thick) lcolor(dkorange) ///
-	   graphregion(color(white)) xsize(10) ysize(10) xtitle("Share of group without data (%)", size(medlarge))  ///
+	   graphregion(color(white)) xsize(10) ysize(10) xtitle("Share of global population without data (%)", size(medlarge))  ///
 ytitle("Error (standard deviations from mean)", size(medlarge)) ylab(0(0.25)1,angle(horizontal) labsize(medlarge)) ///
 plotregion(margin(0 0 0 0)) xlab(0(25)100,labsize(medlarge)) /// 
 legend(order(3 "Baseline" 1 "With empirical missingness" 2 "With imputations")  size(medlarge) rows(2) span symxsize(*0.25) region(lcolor(white))) graphregion(margin(0 3 0 2))
