@@ -1,9 +1,9 @@
 ********************
 *** INTRODUCTION ***
 ********************
-// This .do-file downloads all data in WDI and keeps a subset indicator-year combinations where there is data for at least 99% of the world's population
+// This .do-file downloads all data in WDI and keeps a subset of indicator-year combinations where there is data for at least 99% of the world's population
 // Set working directory
-cd "C:\Users\WB514665\OneDrive - WBG\DECDG\Aggregation"
+cd "\\wbmserccpi201\GDIM\Papers\TrendsPatterns\Do-files\ARCHIVE\Agr"
 
 ****************************
 *** DOWNLOAD ALL WDI DATA ***
@@ -30,15 +30,15 @@ use "Data/WDIfull.dta", clear
 keep if regionname!="Aggregates" | countryname=="World"
 // For some reason the Africa East and West regions do not have the regionname "Aggregates" yet
 drop if inlist(countrycode,"AFE","AFW")
-// There should now be 217 different economies left
+// There should now be 217 different economies left and the world
 distinct countrycode
 // Dropping some irrelevant variables
-drop region admin* incomelevel lending*
-// Drop everything before 2000 - we will only use data from 2000 onwards
+drop regionname admin* incomelevelname lending*
+// Drop everything before 2000 -- we will only use data from 2000 onwards
 drop yr1960-yr1999
 // Dropping duplicates (indicators in more than one topic)
 duplicates drop
-// Some are duplicates by indicator codes but have slightly different indicator names. Removing these
+// Some are duplicates by indicator codes but have slightly different indicator names. Removing these.
 bysort countrycode indicatorcode: drop if _n!=1
 // Now there is one row per country-indicatorcode
 isid countrycode indicatorcode
@@ -66,26 +66,29 @@ drop if strpos(indicatorcode,"SP.POP") | inlist(indicatorcode,"SP.URB.TOTL","SP.
 gen nonmissing = !missing(value)
 *ssc install _gwtmean
 bysort indicatorcode year: egen sharenonmissing = wtmean(nonmissing), weight(pop)
+// Saving this file as it will be useful for a later .do-file
+save "Data/WDImid.dta", replace
 // Only keep years with max non-missing for each per indicator
 bysort indicatorcode: egen maxsharenonmissing = max(sharenonmissing)
 keep if maxsharenonmissing == sharenonmissing
 drop maxsharenonmissing
 // Only keep if at least 99% nonmissing
 keep if sharenonmissing>0.99
+drop nonmissing sharenonmissing
 // If multiple years with same nonmissing, only keep last
 bysort indicatorcode countrycode (year): keep if _n==_N
-drop nonmissing sharenonmissing
 save "Data/WDIsubset", replace
 
 ************************************************************
 *** SELECT AT RANGE OF DIFFERENT AND RELEVANT INDICATORS ***
 ************************************************************
-// This part of the code is a bit manual and explorative
 use "Data/WDIsubset.dta", clear
-// We start out with more than 300 indicatorcodes
+
+// This part of the code is a bit manual and explorative
+// We start out with more than 300 indicator codes
 // Many of these are not super relevant or too alike to be used for the analysis
 distinct indicatorcode
-// For indicators where we have both totals and per capita, only keep only the latter
+// For indicators where we have both totals and per capita, only keep the latter
 preserve
 gen lasttwo = substr(indicatorcode,-2,.)
 gen allelse = substr(indicatorcode,1,length(indicatorcode)-2)
@@ -105,7 +108,7 @@ merge m:1 indicatorcode using `toremove', nogen keep(1)
 // Drop indicators with no variation
 bysort indicatorcode: egen stdev = sd(value)
 drop if stdev==0
-// Drop variables with extremely high standard deviation
+// Drop variables with extremely high variation
 drop if stdev>30000
 // Drop indicators with extremely high variation expressed in dollar terms
 drop if strpos(indicatorcode,".CD") & !strpos(indicatorname,"per") & stdev>1000
@@ -118,9 +121,9 @@ drop if strpos(indicatorcode,"TOTL") & !strpos(indicatorname,"%")
 drop if strpos(indicatorcode,"TX.VAL") | strpos(indicatorcode,"TM.VAL")
 // Drop a bunch of modelled ILO estimates
 drop if (strpos(indicatorcode,"FE.ZS") | strpos(indicatorcode,"MA.ZS")) & strpos(indicatorcode,"SL.")
-// Drop variabbles on various threatened species
+// Drop variables on various threatened species
 drop if strpos(indicatorname,"threatened") 
-// Drop various emission change variables (safe for change in greenhouse gasses)
+// Drop various emission change variables (except for change in greenhouse gasses)
 drop if strpos(indicatorname,"% change from") & indicatorcode!="EN.ATM.GHGT.ZG"
 // Drop variables in thousands (i.e. totals rather than per capita)
 drop if strpos(indicatorname,"thousand")
