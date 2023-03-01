@@ -3,7 +3,7 @@
 ********************
 // This .do-file downloads all data in WDI and keeps a subset of indicator-year combinations where there is data for at least 99% of the world's population
 // Set working directory
-cd "\\wbmserccpi201\GDIM\Papers\TrendsPatterns\Do-files\ARCHIVE\Agr"
+cd "C:\Users\WB514665\OneDrive - WBG\DECDG\Aggregation\RR"
 
 ****************************
 *** DOWNLOAD ALL WDI DATA ***
@@ -136,7 +136,6 @@ drop if strpos(indicatorcode,"PC.") & strpos(indicatorcode,"SH.")
 // Still many mortality variables left. Dropping some that are for men/women when joint variable is also there
 drop if (strpos(indicatorcode,"FE") | strpos(indicatorcode,"MA")) & strpos(indicatorcode,"SP.")
 
-drop year
 drop if missing(value) | missing(pop)
 
 compress
@@ -145,6 +144,7 @@ save "Data/WDIfinal.dta", replace
 **********************************************
 *** INFORMATION ON FINAL INDICATORS CHOSEN ***
 **********************************************
-keep indicator*
+use "Data/WDIfinal.dta", clear
+keep indicator* year
 duplicates drop
 order *code

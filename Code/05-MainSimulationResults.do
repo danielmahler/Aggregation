@@ -104,9 +104,9 @@ gen pred = sharemissing*beta[1,1]
 // Will make the figure look nicer
 replace ub_std = 1 if ub_std>1
 
-****************
-*** FIGURE 1 ***
-****************
+**************
+*** FIGURE ***
+**************
 twoway scatter mean_std      sharemissing if sharemissing<=0.95, color(gs4) || ///
        rarea   lb_std ub_std sharemissing if sharemissing<=0.95, color(dkorange%50) lcolor(dkorange%0) || ///
        line    pred          sharemissing if sharemissing<=0.95, lwidth(thick) color(dkorange) ///

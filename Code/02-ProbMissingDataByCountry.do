@@ -78,6 +78,7 @@ format pop %3.1f
 gen lab = countryname if (_n==1 | _n==_N) | pop>125
 
 // Create actual figure
+/*
 twoway bar missing n, color(gs4) graphregion(color(white)) || ///
        bar missing n if pop<0.5, graphregion(color(white)) color(dkorange) || ///
 	   scatter missing n, msymbol(i) mlab(lab) mlabcolor(black) mlabangle(45) ///
@@ -86,3 +87,17 @@ xtitle("Countries ordered from most missing to least missing") xlab("") ///
 plotregion(margin(0 0 0 0)) graphregion(margin(0 8 0 20)) ///
 legend(order(2 "Population<500,000" 1 "Population>500,000") region(lcolor(white)))
 graph export "Figures/Missing.png", as(png) width(2000) replace
+*/
+
+// Probability by region and income group
+rename countrycode code
+merge 1:1 code using "Data/CLASS.dta", nogen
+format missing %2.1f
+preserve
+collapse (mean) missing [aw=pop], by(incgroup)
+list
+restore
+preserve
+collapse (mean) missing [aw=pop], by(region)
+list
+restore
